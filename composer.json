@@ -1,0 +1,21 @@
+{
+    "name": "josecarlosphp/googlemaps",
+    "description": "Classes to generate maps of Google Maps.",
+    "keywords": [
+        "PHP", "Google Maps"
+    ],
+    "homepage": "https://github.com/josecarlosphp/googlemaps",
+    "type": "library",
+    "license": "GPL-3.0",
+    "authors": [
+        {
+            "name": "José Carlos Cruz Parra",
+            "homepage": "https://josecarlosphp.com/"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "josecarlosphp\\googlemaps\\": "src/"
+        }
+    }
+}
