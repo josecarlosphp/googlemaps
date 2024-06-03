@@ -136,15 +136,47 @@ class GoogleMap
 		$this->SetInitialLocation($sLat / $n, $sLng / $n);
 	}
 
-	function GetJS()
-	{
+    function GetLoad($inJs=false)
+    {
+        $code = '';
+
 		//Para algunos dispositivos puede ser necesario incluir esto en el html head:
 		//<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
 
-		$html = sprintf('<script type="text/javascript" src="https://maps.google.com/maps/api/js?sensor=%s&region=%s&v=%s&key=%s"></script>
-<!--<script type="text/javascript" src="https://code.google.com/apis/gears/gears_init.js"></script>-->
-<script type="text/javascript">
-function GoogleMapInitialize() {
+        $resource = sprintf(
+            'https://maps.google.com/maps/api/js?sensor=%s&region=%s&v=%s&key=%s',
+            $this->_sensor ? 'true' : 'false',
+            $this->_region,
+            $this->_APIVersion,
+            $this->_APIKey
+        );
+        //<script type="text/javascript" src="https://code.google.com/apis/gears/gears_init.js"></script>
+
+        if ($inJs) {
+            $varName = sprintf('se%04s', rand(0, 9999));
+            $code .= sprintf('let %s = document.createElement("script");', $varName)
+                . sprintf('%s.setAttribute("src", "%s");', $varName, $resource)
+                . sprintf('document.body.appendChild(%s);', $varName);
+        } else {
+            $code .= sprintf('<script type="text/javascript" src="%s"></script>', $resource);
+        }
+
+		return $code;
+    }
+
+	function GetJS($load=true, $inJs=false)
+	{
+        $code = '';
+
+        if ($load) {
+            $code .= $this->GetLoad($inJs);
+        }
+
+		if (!$inJs) {
+            $code .= '<script type="text/javascript">';
+        }
+
+		$code .= sprintf('function GoogleMapInitialize() {
   var myOptions = {
     zoom: %u,
     mapTypeId: google.maps.MapTypeId.%s
@@ -153,14 +185,12 @@ function GoogleMapInitialize() {
   map.setCenter(new google.maps.LatLng(%s));
   var shadow = new google.maps.MarkerImage("%s/%s", new google.maps.Size(%s, %s, "%s", "%s"), new google.maps.Point(0,0), new google.maps.Point(0,0));
 ',
-//, new google.maps.Size(24, 24, "px", "px")
-			$this->_sensor ? "true" : "false", $this->_region, $this->_APIVersion, $this->_APIKey,
 			$this->_zoom,
 			$this->_mapType,
 			$this->_divMapId,
 			$this->_initialLocation->GetLatLng(),
 			$this->_dirIcons, $this->_shadowImage, $this->_iconSize->GetWidth(), $this->_iconSize->GetHeight(), $this->_iconSize->GetWidthUnit(), $this->_iconSize->GetHeightUnit()
-			);
+        );
 
 		//Utilizaremos este array para ir guardando los iconos que creemos y reutilizarlos
 		//sin tener que crear un objeto MarkerImage para todos y cada uno de ellos
@@ -173,7 +203,7 @@ function GoogleMapInitialize() {
 			if(!array_key_exists($mark->GetIcon(), $icons))
 			{
 				$c = sizeof($icons);
-				$html .= sprintf('  var icon%u = new google.maps.MarkerImage("%s/%s", new google.maps.Size(%s, %s, "%s", "%s"), new google.maps.Point(0,0), new google.maps.Point(%s,0));'."\n",
+				$code .= sprintf('  var icon%u = new google.maps.MarkerImage("%s/%s", new google.maps.Size(%s, %s, "%s", "%s"), new google.maps.Point(0,0), new google.maps.Point(%s,0));'."\n",
 				//, new google.maps.Size(24, 24, "px", "px")
 					$c,
 					$this->_dirIcons,
@@ -187,11 +217,11 @@ function GoogleMapInitialize() {
 				$icons[$mark->GetIcon()] = sprintf('icon%u', $c);
 			}
 
-			$html .= sprintf("  var pos%s = new google.maps.LatLng(%s);\n", $id, $mark->GetLatLng());
-			$html .= sprintf("  var infowindow%s = new google.maps.InfoWindow();\n", $id);
-			$html .= sprintf("  infowindow%s.setContent('<div class=\"map_infowindow\"><a href=\"%s\"><img src=\"%s\" alt=\"\" /></a><h3>%s</h3><div>%s</div></div>');\n", $id, $mark->GetUrl() ? $mark->GetUrl() : 'javascript:;', $mark->GetImage(), $mark->GetTitle(), $mark->GetDescription());
-			$html .= sprintf("  infowindow%s.setPosition(pos%s);\n", $id, $id);
-			$html .= sprintf("  var marker%s = new google.maps.Marker({
+			$code .= sprintf("  var pos%s = new google.maps.LatLng(%s);\n", $id, $mark->GetLatLng())
+                . sprintf("  var infowindow%s = new google.maps.InfoWindow();\n", $id)
+                . sprintf("  infowindow%s.setContent('<div class=\"map_infowindow\"><a href=\"%s\"><img src=\"%s\" alt=\"\" /></a><h3>%s</h3><div>%s</div></div>');\n", $id, $mark->GetUrl() ? $mark->GetUrl() : 'javascript:;', $mark->GetImage(), $mark->GetTitle(), $mark->GetDescription())
+                . sprintf("  infowindow%s.setPosition(pos%s);\n", $id, $id)
+                . sprintf("  var marker%s = new google.maps.Marker({
     position: pos%s,
     icon: %s,
     shadow: shadow,
@@ -202,10 +232,13 @@ function GoogleMapInitialize() {
   });%s\n", $id, $id, $icons[$mark->GetIcon()], $id, $id, $mark->GetOpen() ? "infowindow{$id}.open(map);" : '');
 		}
 
-		$html .= '}
-</script>
+		$code .= '}
 ';
 
-		return $html;
+        if (!$inJs) {
+            $code .= '</script>';
+        }
+
+		return $code;
 	}
 }
